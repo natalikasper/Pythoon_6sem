@@ -1,0 +1,152 @@
+import mglearn
+import matplotlib.pyplot as plt
+import numpy as np
+
+# АНСАМБЛИ ДЕРЕВЬЕВ РЕШЕНИЙ
+# Ансамбли - методы, кот.сочетают в себе мн-во моделей машин.обуч., чтобы в итоге
+#   получ.более мощную модель.
+
+# 2 наиб.эффективные наборы для решения задач классиф.и регресии:
+#   случайный лес дереьев решений
+#   градиентный бустинг деревьев решений
+
+# СЛУЧАЙНЫЙ ЛЕС (решает проблему переобучения)
+#   это набор деревьев решений, где к.дерево немного отлич.от остальных
+# сущность: к.дерево м.хорошо прогнозир., но скорее всего переобуч.на части д-х
+# построим много деревьев, кот хорошо раб.и переобуч.с.разн.степ.,
+#   мы м.уменьш.переобуч.путем усреднения их рез-тов
+
+# ПОСТРОЕНИЕ СЛУЧАЙНОГО ЛЕСА
+#   хотим постр.n деревьев, кот.построены независ.друг от друга
+#   и алг.будет случ.образом отбирать признаки для построения к.дерева, чтобы
+#     получ.непохожие друг от друга деревья.
+
+# 5 деревьев к набору д-х two_month
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.datasets import make_moons
+from sklearn.model_selection import train_test_split
+
+X, y = make_moons(n_samples=100, noise=0.25, random_state=3)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, stratify=y, random_state=42)
+# деревья строятся в рамках случ.леса, сохран.в атр.estimator_
+forest = RandomForestClassifier(n_estimators=5, random_state=2)
+forest.fit(X_train, y_train)
+
+# визуализ.границы принятия решений, получ.каждым деревом
+# выведем агрегированный прогноз, выданный лесом
+fig, axes = plt.subplots(2, 3, figsize=(20, 10))
+for i, (ax, tree) in enumerate(zip(axes.ravel(), forest.estimators_)):
+    ax.set_title("Дерево {}".format(i))
+    mglearn.plots.plot_tree_partition(X_train, y_train, tree, ax=ax)
+
+mglearn.plots.plot_2d_separator(forest, X_train, fill=True, ax=axes[-1, -1], alpha=.4)
+axes[-1, -1].set_title("Случайный лес")
+mglearn.discrete_scatter(X_train[:, 0], X_train[:, 1], y_train)
+# все границы различаются между собой
+# к.дерево соверш.ряд ошибок, поскольку из-за бутстрепа нек.т.исх.обуч.набора
+#   фактически не были включены в обуч.наборы, по кот.строились деревья
+# случ.лес пееобуч.в меньшей степ.и дает гораздо более гибкую границу принятия реш.
+#   в реальной жизни больше деревьев - получим более чувствительную границу
+# бутстреп выборка - из n примеров мы случ.образом выбираем пример с возвращением
+#   n раз (т.к.отбор с возвращением , то 1 пример мб выбран неск.раз)
+#   мы полкчаем выборку, которая имеет такой же размер, что и исходный набор д-х
+#       однако нек.примеры будут отсутствовать, а некоторые попадут в него несклько раз
+plt.show()
+
+# случайный лес из 100 деревьев
+# на наборе д-х рака
+from sklearn.datasets import load_breast_cancer
+
+cancer = load_breast_cancer()
+X_train, X_test, y_train, y_test = train_test_split(
+    cancer.data, cancer.target, random_state=0)
+forest = RandomForestClassifier(n_estimators=100, random_state=0)
+forest.fit(X_train, y_train)
+
+print("Правильность на обучающем наборе: {:.3f}".format(forest.score(X_train, y_train)))
+# 97% - лучше рез-та лин.моделей или одиночного дерева решений
+# мы могли бы отрегулир.настройку msx_features или применить предварительную обрезку
+#   как это делали для одиночного дерева решений
+# однако пар-ры случ.леса, кот.выставлены по умолч., раб.уже сами по себе достаточно хоршо
+print("Правильность на тестовом наборе: {:.3f}".format(forest.score(X_test, y_test)))
+
+
+# М.ВЫЧИСЛ.ВАЖНОСТИ ПРИЗНАКОВ
+#   кот рассчит.путем агрегирования знач.важности по всем деревьям леса
+# важности признаков, кот.вычисл.случ.лесом, явл.более надежным показателем,
+#   чем важности, вычисленные одним деревом
+def plot_feature_importances_cancer(model):
+    n_features = cancer.data.shape[1]
+    plt.barh(range(n_features), model.feature_importances_, align='center')
+    plt.yticks(np.arange(n_features), cancer.feature_names)
+    plt.xlabel("Важность признака")
+    plt.ylabel("Признак")
+
+
+plot_feature_importances_cancer(forest)
+# в отличии от одиночного дерева решения случ.лес вычисл.ненулевые знач.важностей
+#   для гораздо большего числа признаков.
+# высокое значение важности - как и в одиночном дереве - worst radius
+# но наиб.информативный признак - worst perimeter
+# случайность, лежащая в осн.случ.леса, завтавляет алг.рассм.мн-во возм.интерпрет.
+#   => случ.лес дает гораздо более широкую картику д-х, чем одиночн.дерево
+plt.show()
+
+# ГРАДИЕНТНЫЙ БУСТИНГ ДЕРЕВЬЕВ РЕГРЕССИИ
+#   ансамблевый метод, кот объедин.в себе мн-во деревьев для создания более мощной модели
+# исп.и для классиф.и для регрессии
+# в отличии от случ.леса этот метод строит посл-сть деревьев, в кот.к.дерево
+#   пытается исправить ошибки предыдущего
+# по умолч.отсутств.случайность, вместо этого исп.строгая предварительная обрезка
+# часто исп.деревья неб.глубины(от 1 до 5)
+#   => модель меньше с т.зр.памяти + ускор.вычисление прогнозов
+
+# ИСП_НИЕ НА НАБОРЕ ДАННЫХ РАКА
+# 100 деревьев; макс.глубина -3; скорость обучения - 0,1;
+
+from sklearn.ensemble import GradientBoostingClassifier
+
+X_train, X_test, y_train, y_test = train_test_split(
+    cancer.data, cancer.target, random_state=0)
+gbrt = GradientBoostingClassifier(random_state=0)
+gbrt.fit(X_train, y_train)
+# 100 - переобучение
+print("Правильность на обучающем наборе: {:.3f}".format(gbrt.score(X_train, y_train)))
+print("Правильность на тестовом наборе: {:.3f}".format(gbrt.score(X_test, y_test)))
+
+# уменьшить - примен.более сильную предварительную обрезку, ограничив макс.глубину
+gbrt = GradientBoostingClassifier(random_state=0, max_depth=1)
+gbrt.fit(X_train, y_train)
+print("Правильность на обучающем наборе: {:.3f}".format(gbrt.score(X_train, y_train)))
+print("Правильность на тестовом наборе: {:.3f}".format(gbrt.score(X_test, y_test)))
+
+# уменьшить - снизить скорость обуч.
+gbrt = GradientBoostingClassifier(random_state=0, learning_rate=0.01)
+gbrt.fit(X_train, y_train)
+print("Правильность на обучающем наборе: {:.3f}".format(gbrt.score(X_train, y_train)))
+print("Правильность на тестовом наборе: {:.3f}".format(gbrt.score(X_test, y_test)))
+# уменьшилась сложность - снизилась правильность на обуч.наборе
+#   снижение глубины - значительно улучшило модель,
+#   скорость обучения - незнач.повысило обобщ.спос.
+
+# ВИЗУАЛИЗ.ВАЖНОСТИ ПРИЗНАКОВ
+#   для того, чтобы получить более глуб.представл.о нашей модели
+gbrt = GradientBoostingClassifier(random_state=0, max_depth=1)
+gbrt.fit(X_train, y_train)
+
+def plot_feature_importances_cancer(model):
+    n_features = cancer.data.shape[1]
+    plt.barh(range(n_features), model.feature_importances_, align='center')
+    plt.yticks(np.arange(n_features), cancer.feature_names)
+    plt.xlabel("Важность признака")
+    plt.ylabel("Признак")
+plot_feature_importances_cancer(gbrt)
+# важности признаков схожи с важностями получ.с пом.случ.леса
+#   хотя градиентный бустинг полностью проигнорил нек.признаки
+plt.show()
+
+# ОБЩЕПРИНЯТЫЙ ПОДХОД
+#   сначала попытаться построить случ.лес, кот.дает вполне устойчивые рез-ты
+#       если хорошее кач-во модели, но время на прогнозир - оч.важно
+#   или важно выжать из модели макс.знач.правиьности - выбор в пользу град.бустинга

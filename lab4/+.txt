@@ -1,0 +1,140 @@
+from sklearn.model_selection import train_test_split
+import mglearn
+import matplotlib.pyplot as plt
+import numpy as np
+
+# вычислить пар-ры линейной ф-ции одномерного набора данных
+mglearn.plots.plot_linear_regression_wave()
+# координатный крест - чтобы проще интерпретировать.
+# w - наклон дб около 0,4 и визуально это подтверж.на графике
+# константа (место пересечения с осью ординат) чуть < 0
+plt.show()
+
+# ------ЛИНЕЙНАЯ РЕГРЕССИЯ (метод наименьших квадратов)
+# построение модели
+from sklearn.linear_model import LinearRegression
+X, y = mglearn.datasets.make_wave(n_samples=60)
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
+lr = LinearRegression().fit(X_train, y_train)
+print(lr)
+
+# пар-ры наклона (коэф) w хран.в атр.coef_ - массим NumPy (к.атр соотв.вх.признак)
+# сдвиг )константа) b хран.в атр.incercept (всегда отдельное число с плав.т.
+print("lr.coef_: {}".format(lr.coef_))
+print("lr.intercept_: {}".format(lr.intercept_))
+
+# правильность на наборах
+# 0,66 - не оч.хорошее кач-во модели
+# рез-ты на обуч.и тест похожи - недообуч (а не переобуч)
+# для высокоразм.данных - будет переобучение (дальше)
+print("Правильность на обучающем наборе: {:.2f}".format(lr.score(X_train, y_train)))
+print("Правильность на тестовом наборе: {:.2f}".format(lr.score(X_test, y_test)))
+
+# сложный набор д-х (506 примеров и 105 произв.признаков)
+# хагрузим и разобьем. построим модель лин.регрессии
+X, y = mglearn.datasets.load_extended_boston()
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
+lr = LinearRegression().fit(X_train, y_train)
+print(lr)
+
+# точно предсказываем на обуч., но на тест - довольно низкое значение
+# => переобучение => нужн.модель, кот.позвол.контролир.сложность => гребневая регрес
+print("Правильность на обучающем наборе: {:.2f}".format(lr.score(X_train, y_train)))
+print("Правильность на тестовом наборе: {:.2f}".format(lr.score(X_test, y_test)))
+
+
+# ГРЕБНЕВАЯ РЕГРЕССИЯ (РИДЖ-регр)
+from sklearn.linear_model import Ridge
+ridge = Ridge().fit(X_train, y_train)
+print(ridge)
+
+# на обуч.наборе - меньшая правильность, чем LinearRegression
+# на тестовом наборе - правильность выше.
+#   => переобучение, т.к. ридж - модель с более строгим ограничением
+print("Правильность на обучающем наборе: {:.2f}".format(ridge.score(X_train, y_train)))
+print("Правильность на тестовом наборе: {:.2f}".format(ridge.score(X_test, y_test)))
+
+# Rigde - позвол.найти компроомис между простотой и кач-вой работы на обуч.наборе
+# Компромисс - alpha (зависит от контр.набора д-х)
+#  увел.alpha заставл.коэф.сжиматься до близких к 0 знач
+#       => сниж.кач-во работы на обуч.набор, но повыш.обобсщ.спос.
+ridge10 = Ridge(alpha=10).fit(X_train, y_train)
+print(ridge10)
+print("Правильность на обучающем наборе: {:.2f}".format(ridge10.score(X_train, y_train)))
+print("Правильность на тестовом наборе: {:.2f}".format(ridge10.score(X_test, y_test)))
+
+# уменьш.alpha мы сжим.коэф.в меньше степ => огранич.на коэф.почти не наклад.
+#         => получ.модель, кот.напомин.лин.регрессию.
+ridge01 = Ridge(alpha=0.1).fit(X_train, y_train)
+print(ridge01)
+print("Правильность на обучающем наборе: {:.2f}".format(ridge01.score(X_train, y_train)))
+print("Правильность на тестовом наборе: {:.2f}".format(ridge01.score(X_test, y_test)))
+
+# чем выше альфа - тем более жесткое ограничение накладывается на коэф
+#   => меньше знач.coef_ для высокого знач.альфа
+plt.plot(ridge.coef_, 's', label="Гребневая регрессия alpha=1")
+plt.plot(ridge10.coef_, '^', label="Гребневая регрессия alpha=10")
+plt.plot(ridge01.coef_, 'v', label="Гребневая регрессия alpha=0.1")
+
+plt.plot(lr.coef_, 'o', label="Линейная регрессия")
+plt.xlabel("Индекс коэффициента")
+plt.ylabel("Оценка коэффициента")
+plt.hlines(0, 0, len(lr.coef_))
+plt.ylim(-25, 25)
+plt.legend()
+plt.show()
+
+
+# м.зафиксировать значение альфа и менять доступный объем обуч.д-х.
+mglearn.plots.plot_ridge_n_samples()
+# графики, кот.показ.кач-во работы модели в виде ф-ции от объема набора д-х
+#     - кривые обучения.
+# независ.от объема д-х - правильность на обуч.наблое выше прав.на тест наборе
+plt.show()
+
+
+# ЛАССО - альтернатива ридж.
+# сжимает коэф.до близких к 0 знач., но несколько иным способом.
+# рез-т заключ в том., что при исп-нии лассо нек.коэф стан.равны точно 0
+# получ., что нек.признаки полностью исключ.из модели.
+#   => это м.рассм.как 1 из видов авто отбора признаков - упрощ.интерпрет.модели
+from sklearn.linear_model import Lasso
+lasso = Lasso().fit(X_train, y_train)
+print(lasso)
+# низкая правильность на 2 наборах - недообучение (из 105 признаков исп только 4)
+print("Правильность на обучающем наборе: {:.2f}".format(lasso.score(X_train, y_train)))
+print("Правильность на контрольном наборе: {:.2f}".format(lasso.score(X_test, y_test)))
+print("Количество использованных признаков: {}".format(np.sum(lasso.coef_ != 0)))
+
+# уменьшим альфа, чтобы снизить недообучение
+# мы увеличиваем значение " max _ iter ",
+# иначе модель выдаст предупреждение, что нужно увеличить max _ iter .
+lasso001 = Lasso(alpha=0.01, max_iter=100000).fit(X_train, y_train)
+print(lasso001)
+# более сложная модель - выс.правильность на тест и обуч.наборах
+# лассо лучше работает чем ридж и исп 33 признака из 105
+#   => модель более легкая с т.зр.интерпретации
+print("Правильность на обучающем наборе: {:.2f}".format(lasso001.score(X_train, y_train)))
+print("Правильность на тестовом наборе: {:.2f}".format(lasso001.score(X_test, y_test)))
+print("Количество использованных признаков: {}".format(np.sum(lasso001.coef_ != 0)))
+
+# слишком низкое зач.альфа - нивелируем эффект регуляризации - переобучение
+#     рез-ты как у лин.регрессии
+lasso00001 = Lasso(alpha=0.0001, max_iter=100000).fit(X_train, y_train)
+print(lasso00001)
+print("Правильность на обучающем наборе: {:.2f}".format(lasso00001.score(X_train, y_train)))
+print("Правильность на тестовом наборе: {:.2f}".format(lasso00001.score(X_test, y_test)))
+print("Количество использованных признаков: {}".format(np.sum(lasso00001.coef_ != 0)))
+
+plt.plot(lasso.coef_, 's', label="Лассо alpha=1")
+plt.plot(lasso001.coef_, '^', label="Лассо alpha=0.01")
+plt.plot(lasso00001.coef_, 'v', label="Лассо alpha=0.0001")
+plt.plot(ridge01.coef_, 'o', label="Гребневая регрессия alpha=0.1")
+plt.legend(ncol=2, loc=(0, 1.05))
+plt.ylim(-25, 25)
+plt.xlabel("Индекс коэффициента")
+plt.ylabel("Оценка коэффициента")
+plt.show()
+
+# если выбор между ридж и лассо на практике - предпочтение ридж.
+# если много признаков - лассо

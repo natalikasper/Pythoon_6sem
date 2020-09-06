@@ -1,0 +1,98 @@
+# 1 задание
+import mglearn as mgg
+import matplotlib.pyplot as plt
+
+import sys
+import matplotlib
+import numpy as np
+import scipy as sp
+import IPython
+import sklearn
+import pandas as pd
+
+print("версия Python: {}".format(sys.version))
+print("версия matplotlib: {}".format(matplotlib.__version__))
+print("версия NumPy: {}".format(np.__version__))
+print("версия SciPy: {}".format(sp.__version__))
+print("версия IPython: {}".format(IPython.__version__))
+print("версия scikit-learn: {}".format(sklearn.__version__))
+print("версия pandas: {}".format(pd.__version__))
+
+# 2 задание
+# load_iris() - функция для загрузки набора д-х iris
+# iris включены в модуль datasets библиотеки scikit-learn
+from sklearn.datasets import load_iris
+
+iris_dataset = load_iris();
+
+# объект, вор-мый Load_iris похож на словарь и содерж.ключи и знач
+print("Ключи iris_dataset: \n{}".format(iris_dataset.keys()))
+
+# descr - краткое описание набора д-х
+print(iris_dataset['DESCR'][:193] + "\n...")
+
+# target_names - массив строк, сод-щий сорта цветов, кот мы хотим предсказать
+print("Названия ответов: {}".format(iris_dataset['target_names']))
+
+# features_names - список строк с описанием каждого признака
+print("Названия признаков: \n{}".format(iris_dataset['feature_names']))
+
+# data - массив, кот.сод.количеств.измерения длины и шир.чашелистиков + лепестков
+print("Тип массива data: {}".format(type(iris_dataset['data'])))
+
+# строки в массиве соота.цветам риса, а столбцы - признаки, кот были измнены
+# было изменено 150цветов по 4 признакам
+print("Форма массива data: {}".format(iris_dataset['data'].shape))
+
+# значения признаков для первых 5 примеров
+# все цветки имеют ширину лепестка 0,2 и 1ый им.сам.большую длину чашелистика - 5,1
+print("Первые пять строк массива data:\n{}".format(iris_dataset['data'][:5]))
+
+# target - массив, кот сод.сорта уже измеренных цветов
+print("Тип массива target: {}".format(type(iris_dataset['target'])))
+
+# одномерный массив по 1 эл-ту каждого цветка
+print("Форма массива target: {}".format(iris_dataset['target'].shape))
+
+# сорта кодируются как целые числа от 0 до 2
+# 0 - setosa, 1 - versicolor, 2 - virginica
+print("Ответы:\n{}".format(iris_dataset['target']))
+
+# ф-ция перемешивает набор д-х и разбив.его на 2 части
+from sklearn.model_selection import train_test_split
+
+# Х - д-е, у - метки (обущающие и тест.)
+X_train, X_test, y_train, y_test = train_test_split(
+    iris_dataset['data'], iris_dataset['target'], random_state=0)
+
+# х - 75% строк набора д-х обучающий (2мерный масс (матрица))
+# у - 25% строк набора д-х тестовый (одномерн.массив(вектор))
+print("форма массива X_train: {}".format(X_train.shape))
+print("форма массива y_train: {}".format(y_train.shape))
+
+print("форма массива X_test: {}".format(X_test.shape))
+print("форма массива y_test: {}".format(y_test.shape))
+
+# иссл.д-е с пом.диаграммы рассеяния
+# один признак - по оси х, второй - у => м.разместить только 2 признака
+# => нужно исп.матрицу /=/, на кот.будут все пары признаков
+# scatter_matrix - ф-ция создания парных диаграмм рас.
+# DataFrame - осн.тип д-х в библ.pandas
+# по диагонали - гистограммы каждого признака
+
+# создаем dataframe из д-х в массиве X_train
+# маркируем столбцы, используя строки в columns
+iris_dataframe = pd.DataFrame(X_train, columns=iris_dataset.feature_names)
+from pandas.plotting import scatter_matrix
+# создаем матрицу рассеяния из dataframe, цвет точек - y_train
+grr = scatter_matrix(
+    iris_dataframe,
+    c=y_train,
+    figsize=(15, 15),
+    marker='o',
+    hist_kwds={'bins': 20},
+    s=60,
+    alpha=.8,
+    cmap=mgg.cm3)
+
+plt.show()
